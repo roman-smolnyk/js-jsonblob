@@ -5,7 +5,8 @@ class JSONBlobClient {
   // not presiece
   static CONTENT_LENGTH_LIMIT = 1500503; // response.headers.get("Content-Length")
 
-  constructor() {
+  constructor(keysBlobId) {
+    this.keysBlobId = keysBlobId;
     this.apiUrl = "https://jsonblob.com/api/jsonBlob";
     this.keys = {};
   }
@@ -95,13 +96,13 @@ class JSONBlobClient {
 
   init = async () => {
     const logPrefix = `${this.constructor.name} -> init`;
-    let blobId = localStorage.getItem(JSONBlobClient.KEY);
-    if (blobId) {
-      this.keys = (await this._get(blobId)) || {};
+    this.keysBlobId = this.keysBlobId || localStorage.getItem(JSONBlobClient.KEY);
+    if (this.keysBlobId) {
+      this.keys = (await this._get(this.keysBlobId)) || {};
     } else {
-      blobId = await this._create({});
-      if (!blobId) throw new Error(`${logPrefix}`);
-      localStorage.setItem(JSONBlobClient.KEY, blobId);
+      this.keysBlobId = await this._create({});
+      if (!this.keysBlobId) throw new Error(`${logPrefix}`);
+      localStorage.setItem(JSONBlobClient.KEY, this.keysBlobId);
     }
   };
 
