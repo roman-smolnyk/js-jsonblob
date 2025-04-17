@@ -123,7 +123,7 @@ class JSONBlobClient {
     const logPrefix = `${this.constructor.name} -> get`;
     let blobId = this.keys[key];
 
-    if (!blobId) throw new Error(`${logPrefix} : Missing blobId for ${key}`);
+    if (!blobId) return null;
 
     return await this._get(blobId);
   };
