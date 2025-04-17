@@ -12,8 +12,8 @@ class JSONBlobClient {
   }
 
   // Create a new JSON blob
-  _create = async (data) => {
-    const logPrefix = `${this.constructor.name} -> _create`;
+  _createBlob = async (data) => {
+    const logPrefix = `${this.constructor.name} -> _createBlob`;
     try {
       const response = await fetch(this.apiUrl, {
         method: "POST",
@@ -42,8 +42,8 @@ class JSONBlobClient {
     }
   };
 
-  _update = async (blobId, data) => {
-    const logPrefix = `${this.constructor.name} -> _update`;
+  _updateBlob = async (blobId, data) => {
+    const logPrefix = `${this.constructor.name} -> _updateBlob`;
     try {
       const response = await fetch(`${this.apiUrl}/${blobId}`, {
         method: "PUT",
@@ -70,8 +70,8 @@ class JSONBlobClient {
   };
 
   // Get the content of a JSON blob
-  _get = async (blobId) => {
-    const logPrefix = `${this.constructor.name} -> _get`;
+  _getBlob = async (blobId) => {
+    const logPrefix = `${this.constructor.name} -> _getBlob`;
     try {
       const response = await fetch(`${this.apiUrl}/${blobId}`);
 
@@ -98,9 +98,9 @@ class JSONBlobClient {
     const logPrefix = `${this.constructor.name} -> init`;
     this.keysBlobId = this.keysBlobId || localStorage.getItem(JSONBlobClient.KEY);
     if (this.keysBlobId) {
-      this.keys = (await this._get(this.keysBlobId)) || {};
+      this.keys = (await this._getBlob(this.keysBlobId)) || {};
     } else {
-      this.keysBlobId = await this._create({});
+      this.keysBlobId = await this._createBlob({});
       if (!this.keysBlobId) throw new Error(`${logPrefix}`);
       localStorage.setItem(JSONBlobClient.KEY, this.keysBlobId);
     }
@@ -110,12 +110,12 @@ class JSONBlobClient {
   set = async (key, value) => {
     let blobId = this.keys[key];
     if (blobId) {
-      return await this._update(blobId, value);
+      return await this._updateBlob(blobId, value);
     } else {
-      blobId = await this._create(value);
+      blobId = await this._createBlob(value);
       if (blobId) {
         this.keys[key] = blobId;
-        return await this._update(this.keysBlobId, this.keys);
+        return await this._updateBlob(this.keysBlobId, this.keys);
       }
     }
   };
@@ -126,6 +126,6 @@ class JSONBlobClient {
 
     if (!blobId) return null;
 
-    return await this._get(blobId);
+    return await this._getBlob(blobId);
   };
 }
