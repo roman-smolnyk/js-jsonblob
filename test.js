@@ -2,7 +2,7 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 jsonBlob = new JSONBlobClient();
 
-await jsonBlob.init();
+keysBlobId = await jsonBlob.init();
 let i = 0;
 while (true) {
   console.log(i);

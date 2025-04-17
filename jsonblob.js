@@ -104,6 +104,7 @@ class JSONBlobClient {
       if (!this.keysBlobId) throw new Error(`${logPrefix}`);
       localStorage.setItem(JSONBlobClient.KEY, this.keysBlobId);
     }
+    return this.keysBlobId;
   };
 
   set = async (key, value) => {
@@ -114,7 +115,7 @@ class JSONBlobClient {
       blobId = await this._create(value);
       if (blobId) {
         this.keys[key] = blobId;
-        return await this._update(localStorage.getItem(JSONBlobClient.KEY), this.keys);
+        return await this._update(this.keysBlobId, this.keys);
       }
     }
   };
