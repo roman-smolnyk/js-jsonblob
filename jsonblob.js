@@ -39,7 +39,7 @@ class JSONBlobClient {
       const blobId = new URL(location).pathname.split("/").pop();
       return blobId;
     } catch (error) {
-      console.warning(error);
+      console.warn(error);
       // throw error;
     }
   };
@@ -60,13 +60,13 @@ class JSONBlobClient {
       // console.log(headers);
 
       if (!response.ok) {
-        console.warning(`${logPrefix} : ${response.status}`);
+        console.warn(`${logPrefix} : ${response.status}`);
         return;
       }
 
       return true;
     } catch (error) {
-      console.warning(error);
+      console.warn(error);
       return;
     }
   };
@@ -78,7 +78,7 @@ class JSONBlobClient {
       const response = await fetch(`${this.API_URL}/${blobId}`);
 
       if (!response.ok) {
-        console.warning(`${logPrefix} : ${response.status}`);
+        console.warn(`${logPrefix} : ${response.status}`);
         return;
       }
 
@@ -91,7 +91,7 @@ class JSONBlobClient {
       const data = await response.json();
       return data;
     } catch (error) {
-      console.warning(error);
+      console.warn(error);
       // throw error;
     }
   };
