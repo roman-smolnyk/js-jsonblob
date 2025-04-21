@@ -1,21 +1,23 @@
 //
+
+class JSONBlobExpired extends Error {}
+
 class JSONBlobClient {
   // Blob is removed after 30 days of inactivity
+  static API_URL = "https://jsonblob.com/api/jsonBlob";
   static KEY = JSONBlobClient.name;
-  // not presiece
+  // Approximately
   static CONTENT_LENGTH_LIMIT = 1500503; // response.headers.get("Content-Length")
 
   constructor(keysBlobId) {
     this.keysBlobId = keysBlobId;
-    this.apiUrl = "https://jsonblob.com/api/jsonBlob";
     this.keys = {};
   }
 
-  // Create a new JSON blob
-  _createBlob = async (data) => {
-    const logPrefix = `${this.constructor.name} -> _createBlob`;
+  static createBlob = async (data) => {
+    const logPrefix = `${this.name} -> createBlob`;
     try {
-      const response = await fetch(this.apiUrl, {
+      const response = await fetch(this.API_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
@@ -37,15 +39,15 @@ class JSONBlobClient {
       const blobId = new URL(location).pathname.split("/").pop();
       return blobId;
     } catch (error) {
-      console.error(error);
+      console.warning(error);
       // throw error;
     }
   };
 
-  _updateBlob = async (blobId, data) => {
-    const logPrefix = `${this.constructor.name} -> _updateBlob`;
+  static updateBlob = async (blobId, data) => {
+    const logPrefix = `${this.name} -> updateBlob`;
     try {
-      const response = await fetch(`${this.apiUrl}/${blobId}`, {
+      const response = await fetch(`${this.API_URL}/${blobId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
@@ -58,25 +60,25 @@ class JSONBlobClient {
       // console.log(headers);
 
       if (!response.ok) {
-        console.error(`${logPrefix} : ${response.status}`);
+        console.warning(`${logPrefix} : ${response.status}`);
         return;
       }
 
       return true;
     } catch (error) {
-      console.error(error);
-      throw error;
+      console.warning(error);
+      return;
     }
   };
 
   // Get the content of a JSON blob
-  _getBlob = async (blobId) => {
-    const logPrefix = `${this.constructor.name} -> _getBlob`;
+  static getBlob = async (blobId) => {
+    const logPrefix = `${this.name} -> _getBlob`;
     try {
-      const response = await fetch(`${this.apiUrl}/${blobId}`);
+      const response = await fetch(`${this.API_URL}/${blobId}`);
 
       if (!response.ok) {
-        console.error(`${logPrefix} : ${response.status}`);
+        console.warning(`${logPrefix} : ${response.status}`);
         return;
       }
 
@@ -89,19 +91,25 @@ class JSONBlobClient {
       const data = await response.json();
       return data;
     } catch (error) {
-      console.error(error);
+      console.warning(error);
       // throw error;
     }
   };
 
   init = async () => {
+    // Returns keysBlobId or throws JSONBlobExpired if keysBlobId is expired
     const logPrefix = `${this.constructor.name} -> init`;
     this.keysBlobId = this.keysBlobId || localStorage.getItem(JSONBlobClient.KEY);
     if (this.keysBlobId) {
-      this.keys = (await this._getBlob(this.keysBlobId)) || {};
+      let keys = await JSONBlobClient.getBlob(this.keysBlobId);
+      if (typeof keys === "object" && keys !== null && !Array.isArray(keys)) {
+        this.keys = keys;
+      } else {
+        throw new JSONBlobExpired(`BlobId: ${this.keysBlobId} is expired`);
+      }
     } else {
-      this.keysBlobId = await this._createBlob({});
-      if (!this.keysBlobId) throw new Error(`${logPrefix}`);
+      this.keysBlobId = await JSONBlobClient.createBlob({});
+      if (!this.keysBlobId) throw new Error(`${logPrefix} -> createBlob`);
       localStorage.setItem(JSONBlobClient.KEY, this.keysBlobId);
     }
     return this.keysBlobId;
@@ -110,12 +118,12 @@ class JSONBlobClient {
   set = async (key, value) => {
     let blobId = this.keys[key];
     if (blobId) {
-      return await this._updateBlob(blobId, value);
+      return await JSONBlobClient.updateBlob(blobId, value);
     } else {
-      blobId = await this._createBlob(value);
+      blobId = await JSONBlobClient.createBlob(value);
       if (blobId) {
         this.keys[key] = blobId;
-        return await this._updateBlob(this.keysBlobId, this.keys);
+        return await JSONBlobClient.updateBlob(this.keysBlobId, this.keys);
       }
     }
   };
@@ -126,6 +134,6 @@ class JSONBlobClient {
 
     if (!blobId) return null;
 
-    return await this._getBlob(blobId);
+    return await JSONBlobClient.getBlob(blobId);
   };
 }
