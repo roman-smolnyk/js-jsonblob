@@ -2,6 +2,8 @@
 
 class JSONBlobExpired extends Error {}
 
+class JSONBlobKeyIsMissing extends Error {}
+
 class JSONBlobClient {
   // Blob is removed after 30 days of inactivity
   static API_URL = "https://jsonblob.com/api/jsonBlob";
@@ -16,6 +18,9 @@ class JSONBlobClient {
 
   static createBlob = async (data) => {
     const logPrefix = `${this.name} -> createBlob`;
+    if (!data) {
+      data = {};
+    }
     try {
       const response = await fetch(this.API_URL, {
         method: "POST",
@@ -61,13 +66,13 @@ class JSONBlobClient {
 
       if (!response.ok) {
         console.warn(`${logPrefix} : ${response.status}`);
-        return;
+        return false;
       }
 
       return true;
     } catch (error) {
       console.warn(error);
-      return;
+      return false;
     }
   };
 
@@ -96,15 +101,24 @@ class JSONBlobClient {
     }
   };
 
+  static isBlobExpired = async (blobId) => {
+    return (await JSONBlobClient.getBlob(blobId)) ? false : true;
+  };
+
   set = async (key, value) => {
     let blobId = this.keys[key];
-    if (blobId) {
-      return await JSONBlobClient.updateBlob(blobId, value);
-    } else {
+    if (!blobId) {
       blobId = await JSONBlobClient.createBlob(value);
-      if (blobId) {
+      this.keys[key] = blobId;
+      // Update keys
+      await JSONBlobClient.updateBlob(this.keysBlobId, this.keys);
+    } else {
+      const success = await JSONBlobClient.updateBlob(blobId, value);
+      if (!success) {
+        blobId = await JSONBlobClient.createBlob(value);
         this.keys[key] = blobId;
-        return await JSONBlobClient.updateBlob(this.keysBlobId, this.keys);
+        // Update keys
+        await JSONBlobClient.updateBlob(this.keysBlobId, this.keys);
       }
     }
   };
@@ -113,73 +127,32 @@ class JSONBlobClient {
     const logPrefix = `${this.constructor.name} -> get`;
     let blobId = this.keys[key];
 
-    if (!blobId) return null;
+    if (!blobId) throw new JSONBlobKeyIsMissing(`Key: '${key}' is missing`);
 
     return await JSONBlobClient.getBlob(blobId);
   };
 
-  getKeysFromKeysBlob = async () => {
-    let keys = await JSONBlobClient.getBlob(this.keysBlobId);
-    if (keys !== null && !Array.isArray(keys) && typeof keys === "object") {
-      return keys;
-    }
-    return null;
-  };
-
-  createKeysBlob = async () => {
-    const logPrefix = `${this.constructor.name} -> createKeysBlob`;
-    const keysBlobId = await JSONBlobClient.createBlob({});
-    if (!keysBlobId) throw new Error(`${logPrefix}`);
-    this.keysBlobId = keysBlobId;
-    this.keys = {};
-    localStorage.setItem(JSONBlobClient.KEY, this.keysBlobId);
-    return this.keysBlobId;
-  };
-
-  refreshKeysBlob = async () => {
-    const logPrefix = `${this.constructor.name} -> refreshKeysBlob`;
-    const keys = this.getKeysFromKeysBlob(this.keysBlobId) || this.keys;
-    const keysBlobId = await JSONBlobClient.createBlob(keys);
-    if (!keysBlobId) throw new Error(`${logPrefix}`);
-    this.keysBlobId = keysBlobId;
-    this.keys = keys;
-    localStorage.setItem(JSONBlobClient.KEY, this.keysBlobId);
-    return this.keysBlobId;
-  };
-
-  init = async (keysBlobId, { refreshIfExpired = false } = {}) => {
+  init = async (keysBlobId) => {
     // Returns this or throws JSONBlobExpired if keysBlobId is expired
     const logPrefix = `${this.constructor.name} -> init`;
-    this.keysBlobId = keysBlobId; // Set this.keysBlobId
-    localStorage.setItem(JSONBlobClient.KEY, this.keysBlobId);
-    let expired = false;
-    if (this.keysBlobId) {
-      let keys = this.getKeysFromKeysBlob();
-      if (keys) {
-        this.keys = keys;
-      } else {
-        expired = true;
-      }
-    } else {
-      this.keysBlobId = localStorage.getItem(JSONBlobClient.KEY);
-      if (keysBlobId) {
-        let keys = this.getKeysFromKeysBlob();
-        if (keys) {
-          this.keys = keys;
-        } else {
-          expired = true;
-        }
-      } else {
-        // If no keysBlobId passed and no keysBlobId in localStorage - create new
-        this.createKeysBlob();
-      }
+    if (!keysBlobId) throw new Error(`${logPrefix} -> missing keysBlobId`);
+    const keys = await JSONBlobClient.getBlob(keysBlobId);
+    if (!keys) {
+      throw new JSONBlobExpired(`BlobId: ${keysBlobId} is expired`);
     }
 
-    if (expired === true && refreshIfExpired == true) {
-      this.refreshKeysBlob();
-    } else {
-      throw new JSONBlobExpired(`BlobId: ${this.keysBlobId} is expired`);
+    this.keys = keys;
+    this.keysBlobId = keysBlobId;
+  };
+
+  static buildSimpleClient = async () => {
+    let keysBlobId = localStorage.getItem(JSONBlobClient.name) || (await JSONBlobClient.createBlob());
+    if (await JSONBlobClient.isBlobExpired(keysBlobId)) {
+      keysBlobId = await JSONBlobClient.createBlob();
     }
-    return this;
+    localStorage.setItem(JSONBlobClient.name, keysBlobId);
+    const jsonBlob = new JSONBlobClient();
+    await jsonBlob.init(keysBlobId);
+    return jsonBlob;
   };
 }
