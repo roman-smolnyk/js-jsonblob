@@ -106,6 +106,7 @@ class JSONBlobClient {
   };
 
   set = async (key, value) => {
+    // TODO Check if expired and also return status
     let blobId = this.keys[key];
     if (!blobId) {
       blobId = await JSONBlobClient.createBlob(value);
@@ -145,12 +146,12 @@ class JSONBlobClient {
     this.keysBlobId = keysBlobId;
   };
 
-  static buildSimpleClient = async () => {
-    let keysBlobId = localStorage.getItem(JSONBlobClient.name) || (await JSONBlobClient.createBlob());
+  static buildClient = async (localStorageKey = JSONBlobClient.name) => {
+    let keysBlobId = localStorage.getItem(localStorageKey) || (await JSONBlobClient.createBlob());
     if (await JSONBlobClient.isBlobExpired(keysBlobId)) {
       keysBlobId = await JSONBlobClient.createBlob();
     }
-    localStorage.setItem(JSONBlobClient.name, keysBlobId);
+    localStorage.setItem(localStorageKey, keysBlobId);
     const jsonBlob = new JSONBlobClient();
     await jsonBlob.init(keysBlobId);
     return jsonBlob;
