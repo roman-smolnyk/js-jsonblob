@@ -1,159 +1,150 @@
-//
+// poma23324
 
-class JSONBlobExpired extends Error {}
+/*
+response = await fetch("https://jsonblob.com/api/jsonBlob", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({"zebra": 12}),
+      });
 
-class JSONBlobKeyIsMissing extends Error {}
+response.status // 201
+
+blobUrl = response.headers.get("Location"); // Be aware of the http
+data = await response.json(); // Returns my payload
+
+blobId = "1365939953321828352"
+response = await fetch(`https://jsonblob.com/api/jsonBlob/${blobId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({"love": 500}),
+      });
+
+response.status // 200
+data = await response.json(); // Returns my payload
+
+blobId = "1365939953321828352"
+response = await fetch(`https://jsonblob.com/api/jsonBlob/${blobId}`);
+
+response.status // 404
+
+data = await response.json(); {"message": "Error message"}
+
+*/
 
 class JSONBlobClient {
-  // Blob is removed after 30 days of inactivity
+  // Blob will be removed after 30 days of inactivity
   static API_URL = "https://jsonblob.com/api/jsonBlob";
-  static KEY = JSONBlobClient.name;
   // Approximately
   static CONTENT_LENGTH_LIMIT = 1500503; // response.headers.get("Content-Length")
 
-  constructor() {
-    this.keysBlobId = null;
-    this.keys = {};
+  static _parseBlobId(blobUrl) {
+    const logPrefix = `${this.name}.${this._parseBlobId.name}`;
+    const match = blobUrl.match(/jsonblob.com\/api\/jsonBlob\/(\d+)/);
+    if (!match) throw Error(`${logPrefix} -> No match for blobId`);
+    return match[1];
   }
 
-  static createBlob = async (data) => {
-    const logPrefix = `${this.name} -> createBlob`;
-    if (!data) {
-      data = {};
+  static async createBlob(jsonObj) {
+    const logPrefix = `${this.name}.${this.createBlob.name}`;
+    if (!jsonObj) jsonObj = {};
+    const response = await fetch(this.API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(jsonObj),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw Error(`${logPrefix} -> ${response.status} -> ${data}`);
     }
-    try {
-      const response = await fetch(this.API_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
 
-      if (!response.ok) {
-        console.error(`${logPrefix} : ${response.status}`);
-        return;
-      }
+    const newBlobId = this._parseBlobId(response.headers.get("Location"));
+    return newBlobId;
+  }
 
-      // const headers = {};
-      // response.headers.forEach((value, name) => {
-      //   headers[name] = value;
-      // });
-      // console.log(headers);
+  static async updateBlob(blobId, jsonObj) {
+    const logPrefix = `${this.name}.${this.updateBlob.name}`;
 
-      const location = response.headers.get("Location");
+    const response = await fetch(`${this.API_URL}/${blobId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(jsonObj),
+    });
 
-      const blobId = new URL(location).pathname.split("/").pop();
-      return blobId;
-    } catch (error) {
-      console.warn(error);
-      // throw error;
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw Error(`${logPrefix} -> ${response.status} -> ${data}`);
     }
-  };
+  }
 
-  static updateBlob = async (blobId, data) => {
-    const logPrefix = `${this.name} -> updateBlob`;
-    try {
-      const response = await fetch(`${this.API_URL}/${blobId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
+  static async getBlob(blobId) {
+    const logPrefix = `${this.name}.${this.getBlob.name}`;
+    const response = await fetch(`${this.API_URL}/${blobId}`);
 
-      // const headers = {};
-      // response.headers.forEach((value, name) => {
-      //   headers[name] = value;
-      // });
-      // console.log(headers);
+    const data = await response.json();
 
-      if (!response.ok) {
-        console.warn(`${logPrefix} : ${response.status}`);
-        return false;
-      }
-
-      return true;
-    } catch (error) {
-      console.warn(error);
-      return false;
+    if (!response.ok) {
+      throw Error(`${logPrefix} -> ${response.status} -> ${data}`);
     }
-  };
 
-  // Get the content of a JSON blob
-  static getBlob = async (blobId) => {
-    const logPrefix = `${this.name} -> getBlob`;
-    try {
-      const response = await fetch(`${this.API_URL}/${blobId}`);
-
-      if (!response.ok) {
-        console.warn(`${logPrefix} : ${response.status}`);
-        return;
-      }
-
-      //   const headers = {};
-      //   response.headers.forEach((value, name) => {
-      //     headers[name] = value;
-      //   });
-      //   console.log(headers);
-
-      const data = await response.json();
-      return data;
-    } catch (error) {
-      console.warn(error);
-      // throw error;
-    }
-  };
+    return data;
+  }
 
   static isBlobExpired = async (blobId) => {
     return (await JSONBlobClient.getBlob(blobId)) ? false : true;
   };
+}
 
-  set = async (key, value) => {
-    // TODO Check if expired and also return status
-    let blobId = this.keys[key];
-    if (!blobId) {
-      blobId = await JSONBlobClient.createBlob(value);
-      this.keys[key] = blobId;
-      // Update keys
-      await JSONBlobClient.updateBlob(this.keysBlobId, this.keys);
+// #########################################################################
+
+class JSONBlobKeyIsMissing extends Error {}
+
+class JSONBlobStorage {
+  static DEFAULT_LOCAL_STORAGE_KEY = JSONBlobStorage.name;
+  constructor() {
+    this.keysBlobId = null;
+    this.keys = new Map();
+  }
+
+  async set(key, value) {
+    const logPrefix = `${this.constructor.name}.${this.set.name}`;
+    let isNewKey = false;
+    if (this.keys.has(key)) {
+      await JSONBlobClient.updateBlob(this.keys.get(key), value);
     } else {
-      const success = await JSONBlobClient.updateBlob(blobId, value);
-      if (!success) {
-        blobId = await JSONBlobClient.createBlob(value);
-        this.keys[key] = blobId;
-        // Update keys
-        await JSONBlobClient.updateBlob(this.keysBlobId, this.keys);
-      }
+      const blobId = await JSONBlobClient.createBlob(value);
+      this.keys.set(key, blobId);
+      // Update keys
+      await JSONBlobClient.updateBlob(this.keysBlobId, Object.fromEntries(this.keys));
+      isNewKey = true;
     }
-  };
+    return isNewKey;
+  }
 
-  get = async (key) => {
-    const logPrefix = `${this.constructor.name} -> get`;
-    let blobId = this.keys[key];
+  async get(key) {
+    const logPrefix = `${this.constructor.name}.${this.get.name}`;
+    if (!this.keys.has(key)) throw JSONBlobKeyIsMissing(`${logPrefix} -> '${key}' is missing`);
 
-    if (!blobId) throw new JSONBlobKeyIsMissing(`Key: '${key}' is missing`);
+    return await JSONBlobClient.getBlob(this.keys.get(key));
+  }
 
-    return await JSONBlobClient.getBlob(blobId);
-  };
-
-  init = async (keysBlobId) => {
-    // Returns this or throws JSONBlobExpired if keysBlobId is expired
-    const logPrefix = `${this.constructor.name} -> init`;
+  async init(keysBlobId) {
+    const logPrefix = `${this.constructor.name}.${this.init.name}`;
     if (!keysBlobId) throw new Error(`${logPrefix} -> missing keysBlobId`);
     const keys = await JSONBlobClient.getBlob(keysBlobId);
-    if (!keys) {
-      throw new JSONBlobExpired(`BlobId: ${keysBlobId} is expired`);
-    }
-
-    this.keys = keys;
+    this.keys = new Map(Object.entries(keys));
     this.keysBlobId = keysBlobId;
-  };
+  }
 
-  static buildClient = async (localStorageKey = JSONBlobClient.name) => {
+  static async buildClient(localStorageKey) {
+    const logPrefix = `${this.name}.${this.buildClient.name}`;
+    localStorageKey = localStorageKey ? localStorageKey : JSONBlobStorage.DEFAULT_LOCAL_STORAGE_KEY;
     let keysBlobId = localStorage.getItem(localStorageKey) || (await JSONBlobClient.createBlob());
-    if (await JSONBlobClient.isBlobExpired(keysBlobId)) {
-      keysBlobId = await JSONBlobClient.createBlob();
-    }
     localStorage.setItem(localStorageKey, keysBlobId);
-    const jsonBlob = new JSONBlobClient();
-    await jsonBlob.init(keysBlobId);
-    return jsonBlob;
-  };
+    const jsonBlobStorage = new JSONBlobStorage();
+    await jsonBlobStorage.init(keysBlobId);
+    return jsonBlobStorage;
+  }
 }
