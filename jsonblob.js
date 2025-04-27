@@ -46,7 +46,6 @@ class JSONBlobClient {
 
   static async createBlob(jsonObj) {
     const logPrefix = `${this.name}.${this.createBlob.name}`;
-    if (!jsonObj) jsonObj = {};
     const response = await fetch(this.API_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -65,7 +64,6 @@ class JSONBlobClient {
 
   static async updateBlob(blobId, jsonObj) {
     const logPrefix = `${this.name}.${this.updateBlob.name}`;
-
     const response = await fetch(`${this.API_URL}/${blobId}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -141,7 +139,7 @@ class JSONBlobStorage {
   static async buildClient(localStorageKey) {
     const logPrefix = `${this.name}.${this.buildClient.name}`;
     localStorageKey = localStorageKey ? localStorageKey : JSONBlobStorage.DEFAULT_LOCAL_STORAGE_KEY;
-    let keysBlobId = localStorage.getItem(localStorageKey) || (await JSONBlobClient.createBlob());
+    let keysBlobId = localStorage.getItem(localStorageKey) || (await JSONBlobClient.createBlob({}));
     localStorage.setItem(localStorageKey, keysBlobId);
     const jsonBlobStorage = new JSONBlobStorage();
     await jsonBlobStorage.init(keysBlobId);
