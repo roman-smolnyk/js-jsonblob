@@ -40,7 +40,7 @@ class JSONBlobClient {
   static _parseBlobId(blobUrl) {
     const logPrefix = `${this.name}.${this._parseBlobId.name}`;
     const match = blobUrl.match(/jsonblob.com\/api\/jsonBlob\/(\d+)/);
-    if (!match) throw Error(`${logPrefix} -> No match for blobId`);
+    if (!match) throw new Error(`${logPrefix} -> No match for blobId`);
     return match[1];
   }
 
@@ -55,7 +55,7 @@ class JSONBlobClient {
     const data = await response.json();
 
     if (!response.ok) {
-      throw Error(`${logPrefix} -> ${response.status} -> ${data}`);
+      throw new Error(`${logPrefix} -> ${response.status} -> ${data}`);
     }
 
     const newBlobId = this._parseBlobId(response.headers.get("Location"));
@@ -73,7 +73,7 @@ class JSONBlobClient {
     const data = await response.json();
 
     if (!response.ok) {
-      throw Error(`${logPrefix} -> ${response.status} -> ${data}`);
+      throw new Error(`${logPrefix} -> ${response.status} -> ${data}`);
     }
   }
 
@@ -84,7 +84,7 @@ class JSONBlobClient {
     const data = await response.json();
 
     if (!response.ok) {
-      throw Error(`${logPrefix} -> ${response.status} -> ${data}`);
+      throw new Error(`${logPrefix} -> ${response.status} -> ${data}`);
     }
 
     return data;
@@ -123,7 +123,7 @@ class JSONBlobStorage {
 
   async get(key) {
     const logPrefix = `${this.constructor.name}.${this.get.name}`;
-    if (!this.keys.has(key)) throw JSONBlobKeyIsMissing(`${logPrefix} -> '${key}' is missing`);
+    if (!this.keys.has(key)) throw new JSONBlobKeyIsMissing(`${logPrefix} -> '${key}' is missing`);
 
     return await JSONBlobClient.getBlob(this.keys.get(key));
   }
