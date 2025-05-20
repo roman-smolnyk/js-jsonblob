@@ -31,6 +31,8 @@ data = await response.json(); {"message": "Error message"}
 
 */
 
+// TODO: Delete request
+
 class JSONBlobClient {
   // Blob will be removed after 30 days of inactivity
   static API_URL = "https://jsonblob.com/api/jsonBlob";
@@ -91,7 +93,7 @@ class JSONBlobClient {
   }
 
   static isBlobExpired = async (blobId) => {
-    return (await JSONBlobClient.getBlob(blobId)) ? false : true;
+    return !(await JSONBlobClient.getBlob(blobId));
   };
 }
 
@@ -139,7 +141,7 @@ class JSONBlobStorage {
   static async buildClient(localStorageKey) {
     const logPrefix = `${this.name}.${this.buildClient.name}`;
     localStorageKey = localStorageKey ? localStorageKey : JSONBlobStorage.DEFAULT_LOCAL_STORAGE_KEY;
-    let keysBlobId = localStorage.getItem(localStorageKey) || (await JSONBlobClient.createBlob({}));
+    const keysBlobId = localStorage.getItem(localStorageKey) || (await JSONBlobClient.createBlob({}));
     localStorage.setItem(localStorageKey, keysBlobId);
     const jsonBlobStorage = new JSONBlobStorage();
     await jsonBlobStorage.init(keysBlobId);
