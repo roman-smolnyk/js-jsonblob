@@ -136,6 +136,17 @@ class JSONBlobStorage {
     this.keysBlobId = keysBlobId;
   }
 
+  async updateKeys(keys) {
+    if (keys) this.keys = keys;
+    await JSONBlobClient.updateBlob(this.keysBlobId, Object.fromEntries(this.keys));
+  }
+
+  async __keepAlive() {
+    // * Update this key on every creation to keep keysBlobId alive even if no new keys created
+    this.keys.set("__lifekeeper", new Date().toISOString());
+    await this.updateKeys();
+  }
+
   static async buildClient(localStorageKey) {
     const logPrefix = `${this.name}.${this.buildClient.name}`;
     localStorageKey = localStorageKey ? localStorageKey : JSONBlobStorage.DEFAULT_LOCAL_STORAGE_KEY;
@@ -143,8 +154,7 @@ class JSONBlobStorage {
     localStorage.setItem(localStorageKey, keysBlobId);
     const jsonBlobStorage = new JSONBlobStorage();
     await jsonBlobStorage.init(keysBlobId);
-    // * Update this key on every creation to keep keysBlobId alive even if no new keys created
-    await jsonBlobStorage.set("__lifekeeper", { uuid: crypto.randomUUID(), date: new Date().toISOString() });
+    await jsonBlobStorage.__keepAlive();
     return jsonBlobStorage;
   }
 }
