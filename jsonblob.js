@@ -1,5 +1,3 @@
-// poma23324
-
 /*
 response = await fetch("https://jsonblob.com/api/jsonBlob", {
         method: "POST",
@@ -145,6 +143,8 @@ class JSONBlobStorage {
     localStorage.setItem(localStorageKey, keysBlobId);
     const jsonBlobStorage = new JSONBlobStorage();
     await jsonBlobStorage.init(keysBlobId);
+    // * Update this key on every creation to keep keysBlobId alive even if no new keys created
+    await jsonBlobStorage.set("__lifekeeper", { uuid: crypto.randomUUID(), date: new Date().toISOString() });
     return jsonBlobStorage;
   }
 }
