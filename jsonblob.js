@@ -154,7 +154,7 @@ class JSONBlobStorage {
     localStorage.setItem(localStorageKey, keysBlobId);
     const jsonBlobStorage = new JSONBlobStorage();
     await jsonBlobStorage.init(keysBlobId);
-    await jsonBlobStorage.__keepAlive();
+    await jsonBlobStorage.__keepAlive(); // ! Perhaps it makes no sense as any read operation keeps blob alive
     return jsonBlobStorage;
   }
 }
