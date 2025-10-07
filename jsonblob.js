@@ -37,6 +37,8 @@ class JSONBlobClient {
   // Approximately
   static CONTENT_LENGTH_LIMIT = 1500503; // response.headers.get("Content-Length")
 
+  static USE_GM_XMLHTTPREQUEST = false;
+
   static _parseBlobId(blobUrl) {
     const logPrefix = `${this.name}.${this._parseBlobId.name}`;
     const match = blobUrl.match(/jsonblob.com\/api\/jsonBlob\/(\d+)/);
@@ -46,6 +48,14 @@ class JSONBlobClient {
 
   static async createBlob(jsonObj) {
     const logPrefix = `${this.name}.${this.createBlob.name}`;
+    if (this.USE_GM_XMLHTTPREQUEST) {
+      return this._createBlobGM(jsonObj);
+    }
+    return this._createBlobFetch(jsonObj);
+  }
+
+  static async _createBlobFetch(jsonObj) {
+    const logPrefix = `${this.name}.${this._createBlobFetch.name}`;
     const response = await fetch(this.API_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -62,8 +72,29 @@ class JSONBlobClient {
     return newBlobId;
   }
 
+  static async _createBlobGM(jsonObj) {
+    const logPrefix = `${this.name}.${this.updateBlob.name}`;
+    const r = await GM.xmlHttpRequest({
+      url: this.API_URL,
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      data: JSON.stringify(jsonObj),
+    });
+
+    const newBlobId = this._parseBlobId(r.responseHeaders.get("Location"));
+    return newBlobId;
+  }
+
   static async updateBlob(blobId, jsonObj) {
     const logPrefix = `${this.name}.${this.updateBlob.name}`;
+    if (this.USE_GM_XMLHTTPREQUEST) {
+      return this._updateBlobGM(blobId, jsonObj);
+    }
+    return this._updateBlobFetch(blobId, jsonObj);
+  }
+
+  static async _updateBlobFetch(blobId, jsonObj) {
+    const logPrefix = `${this.name}.${this._updateBlobFetch.name}`;
     const response = await fetch(`${this.API_URL}/${blobId}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -77,8 +108,28 @@ class JSONBlobClient {
     }
   }
 
+  static async _updateBlobGM(blobId, jsonObj) {
+    const logPrefix = `${this.name}.${this._updateBlobGM.name}`;
+    const r = await GM.xmlHttpRequest({
+      url: `${this.API_URL}/${blobId}`,
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      data: JSON.stringify(jsonObj),
+    });
+
+    const data = JSON.parse(r.responseText);
+  }
+
   static async getBlob(blobId) {
     const logPrefix = `${this.name}.${this.getBlob.name}`;
+    if (this.USE_GM_XMLHTTPREQUEST) {
+      return this._getBlobGM(blobId);
+    }
+    return this._getBlobFetch(blobId);
+  }
+
+  static async _getBlobFetch(blobId) {
+    const logPrefix = `${this.name}.${this._getBlobFetch.name}`;
     const response = await fetch(`${this.API_URL}/${blobId}`);
 
     const data = await response.json();
@@ -86,6 +137,18 @@ class JSONBlobClient {
     if (!response.ok) {
       throw new Error(`${logPrefix} -> ${response.status} -> ${data}`);
     }
+
+    return data;
+  }
+
+  static async _getBlobGM(blobId) {
+    const logPrefix = `${this.name}.${this._getBlobGM.name}`;
+    const r = await GM.xmlHttpRequest({
+      url: `${this.API_URL}/${blobId}`,
+      method: "GET",
+    });
+
+    const data = JSON.parse(r.responseText);
 
     return data;
   }
